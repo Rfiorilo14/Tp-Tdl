@@ -22,6 +22,6 @@ Maximiliano Torre
 |-- assets                    // Recursos de Blender y gráficos
     |-- models                // Modelos 3D exportados de Blender (ej: .obj, .fbx)
     |-- textures              // Texturas para los modelos 3D
-    |-- animations            // Archivos de animación, si los usas
+    |-- animations            // Archivos de animación
 |-- models                    // Modelos de datos para jugadores, tablero, etc.
 |-- utils                     // Utilidades como generación aleatoria, temporizadores
