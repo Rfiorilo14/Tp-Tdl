@@ -1,13 +1,13 @@
 package main
 
 import (
-	"F:\tps_de_roy\FUIBA\TDL\snake-game\game"
+	"snake-game/game"
 )
 
 func main() {
-	// Crear un tablero de 10x10
-	board := game.NewBoard(10, 10)
+	// Crear un tablero de juego de 20x10
+	board := game.NewBoard(80, 20)
 
-	// Mostrar el tablero en la terminal
-	board.Display()
+	// Dibujar el tablero en la consola
+	board.Display() // Cambiado a Display() en lugar de Draw()
 }
