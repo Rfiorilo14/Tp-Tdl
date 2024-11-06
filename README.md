@@ -26,3 +26,4 @@ Maximiliano Torre
 |   |-- animations           // Archivos de animación para el juego
 |-- models                   // Modelos de datos para estructurar información como jugadores, tablero, etc.
 |-- utils                    // Utilidades varias, como generación aleatoria, temporizadores
+|   |-- colors               // Colores para la serpiente, comida, etc
