@@ -14,7 +14,12 @@ func (c *CollisionManager) CheckCollisionWithBorders(board *Board, s *snake.Snak
 	return x < 0 || x >= board.Width || y < 0 || y >= board.Height
 }
 
-// CheckSelfCollision verifica si la serpiente se toca a sí misma usando IsSelfCollision
+// CheckSelfCollision verifica si la serpiente se toca a sí misma
 func (c *CollisionManager) CheckSelfCollision(s *snake.Snake) bool {
-	return s.IsSelfCollision()
+	for i := 1; i < len(s.Body); i++ { // Comienza en 1 para evitar la cabeza misma
+		if s.Body[i] == s.Body[0] { // La cabeza colisiona con el cuerpo
+			return true
+		}
+	}
+	return false
 }
