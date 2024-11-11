@@ -1,4 +1,3 @@
-// main.go
 package main
 
 import (
@@ -15,33 +14,31 @@ type GameController struct {
 	mainGame    *game.Game
 }
 
+// NewGameController crea una nueva instancia de GameController y registra el observador
 func NewGameController() *GameController {
-	return &GameController{
+	controller := &GameController{
 		loginScreen: ui.NewLoginScreen(),
 	}
+
+	controller.loginScreen.RegisterSubscriber(func(playerNames []string) {
+		board := game.NewBoard(120, 60)
+		snakes := []*snake.Snake{}
+		for i := range playerNames {
+			snakes = append(snakes, snake.NewSnake(i*2, i*2))
+		}
+		controller.mainGame = game.NewGame(board, snakes, playerNames)
+	})
+
+	return controller
 }
 
 // Update maneja la transición entre el login y el juego principal
 func (gc *GameController) Update() error {
-	// Verifica si el login está completo y, de ser así, inicializa el juego principal
-	if gc.mainGame == nil {
-		playerNames, isComplete := gc.loginScreen.StartGame()
-		if isComplete {
-			board := game.NewBoard(120, 60)
-			snakes := []*snake.Snake{}
-			for i := range playerNames {
-				log.Printf("Jugador %d: %s", i+1, playerNames[i])
-				snakes = append(snakes, snake.NewSnake(i*2, i*2)) // Crea serpiente para cada jugador
-			}
-			gc.mainGame = game.NewGame(board)
-			gc.mainGame.Snakes = snakes
-		}
-	}
-
-	// Si el juego está inicializado, llama a su Update, si no, llama al login
+	// Si el juego ya se ha inicializado, actualizamos su estado
 	if gc.mainGame != nil {
 		return gc.mainGame.Update()
 	}
+	// Si el login no se ha completado, continuamos actualizando la pantalla de login
 	return gc.loginScreen.Update()
 }
 
