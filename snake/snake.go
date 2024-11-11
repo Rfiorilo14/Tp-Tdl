@@ -8,7 +8,8 @@ type Snake struct {
 	Direction [2]int   // Dirección de movimiento actual
 	Speed     int
 	Alive     bool
-	Length    int // Longitud actual de la serpiente
+	Length    int
+	Score     int // Nuevo campo para el puntaje del jugador
 }
 
 var (

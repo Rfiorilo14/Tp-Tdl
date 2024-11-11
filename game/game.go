@@ -55,16 +55,50 @@ func (g *Game) Update() error {
 		return nil
 	}
 
-	for _, s := range g.Snakes {
-		if ebiten.IsKeyPressed(ebiten.KeyArrowUp) && s.Direction != snake.Down {
-			s.Direction = snake.Up
-		} else if ebiten.IsKeyPressed(ebiten.KeyArrowDown) && s.Direction != snake.Up {
-			s.Direction = snake.Down
-		} else if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) && s.Direction != snake.Right {
-			s.Direction = snake.Left
-		} else if ebiten.IsKeyPressed(ebiten.KeyArrowRight) && s.Direction != snake.Left {
-			s.Direction = snake.Right
+	for i, s := range g.Snakes {
+		if s.Position[0] == g.FoodPosition[0] && s.Position[1] == g.FoodPosition[1] {
+			s.Grow()
+			g.Score++
+			s.Score++
+			g.PlaceRandomFood()
 		}
+
+		// Configuración de controles específicos por jugador
+		switch i {
+		case 0: // Primer jugador (Flechas)
+			if ebiten.IsKeyPressed(ebiten.KeyArrowUp) && s.Direction != snake.Down {
+				s.Direction = snake.Up
+			} else if ebiten.IsKeyPressed(ebiten.KeyArrowDown) && s.Direction != snake.Up {
+				s.Direction = snake.Down
+			} else if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) && s.Direction != snake.Right {
+				s.Direction = snake.Left
+			} else if ebiten.IsKeyPressed(ebiten.KeyArrowRight) && s.Direction != snake.Left {
+				s.Direction = snake.Right
+			}
+
+		case 1: // Segundo jugador (Teclas WASD)
+			if ebiten.IsKeyPressed(ebiten.KeyW) && s.Direction != snake.Down {
+				s.Direction = snake.Up
+			} else if ebiten.IsKeyPressed(ebiten.KeyS) && s.Direction != snake.Up {
+				s.Direction = snake.Down
+			} else if ebiten.IsKeyPressed(ebiten.KeyA) && s.Direction != snake.Right {
+				s.Direction = snake.Left
+			} else if ebiten.IsKeyPressed(ebiten.KeyD) && s.Direction != snake.Left {
+				s.Direction = snake.Right
+			}
+
+		case 2: // Tercer jugador (Teclas KOLÑ)
+			if ebiten.IsKeyPressed(ebiten.KeyO) && s.Direction != snake.Down {
+				s.Direction = snake.Up
+			} else if ebiten.IsKeyPressed(ebiten.KeyL) && s.Direction != snake.Up {
+				s.Direction = snake.Down
+			} else if ebiten.IsKeyPressed(ebiten.KeyK) && s.Direction != snake.Right {
+				s.Direction = snake.Left
+			} else if ebiten.IsKeyPressed(ebiten.KeySemicolon) && s.Direction != snake.Left {
+				s.Direction = snake.Right
+			}
+		}
+
 		s.Move()
 
 		if g.CollisionManager.CheckCollisionWithBorders(g.Board, s) {
@@ -76,13 +110,6 @@ func (g *Game) Update() error {
 			g.GameOver = true
 			log.Println("¡Perdiste! La serpiente se atravesó a sí misma.")
 			return nil
-		}
-
-		// Verificar colisión con la comida
-		if s.Position[0] == g.FoodPosition[0] && s.Position[1] == g.FoodPosition[1] {
-			s.Grow()            // Aumenta la longitud de la serpiente
-			g.Score++           // Aumenta el puntaje
-			g.PlaceRandomFood() // Coloca una nueva comida en el tablero
 		}
 	}
 	return nil
