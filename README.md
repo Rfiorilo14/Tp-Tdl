@@ -4,26 +4,22 @@ Brian Fernandez
 Maximiliano Torre
 
 
-## Idea de la Estructura del Proyecto
+## Estructura del Proyecto
 
 ```plaintext
 |-- go.mod                   // Archivo de módulos de Go, define dependencias y versión del proyecto
-|-- main.go                  // Punto de partida del juego, aca ejecutamos
+|-- main.go                  // Punto de entrada del juego, donde se ejecuta la inicialización
 |-- game                     // Lógica principal del juego
-|   |-- game.go              // Control de flujo del juego, inicialización y lógica general
 |   |-- board.go             // Lógica del tablero, generación de comida y obstáculos
 |   |-- collision.go         // Detección de colisiones entre la serpiente y otros objetos
-|   |-- powerups.go          // Implementación de power-ups y power-downs
-|-- snake                    // Lógica de las serpientes (jugador y posibles oponentes)
-|   |-- snake.go             // Estructura de la serpiente, control de movimientos y velocidad
-|   |-- ia.go                // IA para serpientes controladas por la computadora
-|-- ui                       // Interfaz gráfica y renderizado del juego
-|   |-- render.go            // Renderizado 3D, carga de modelos y texturas
-|   |-- blender_import.go    // Funciones para importar y manejar recursos desde Blender
-|-- assets                   // Recursos gráficos y modelos 3D
-|   |-- models               // Modelos 3D exportados de Blender (ej: .obj, .fbx)
-|   |-- textures             // Texturas para los modelos 3D
-|   |-- animations           // Archivos de animación para el juego
-|-- models                   // Modelos de datos para estructurar información como jugadores, tablero, etc.
-|-- utils                    // Utilidades varias, como generación aleatoria, temporizadores
-|   |-- colors               // Colores para la serpiente, comida, etc
+|   |-- control_strategy.go  // Estrategias de control para manejar las acciones de las serpientes
+|   |-- game.go              // Control del flujo del juego, inicialización y lógica general
+|   |-- powerups.go          // Implementación de power-ups y power-downs en el juego
+|-- snake                    // Lógica específica de las serpientes (jugador y posibles oponentes)
+|   |-- snake.go             // Estructura y lógica de la serpiente, control de movimientos y velocidad
+|-- ui                       // Interfaz gráfica y manejo de pantallas del juego
+|   |-- login_state.go       // Estado y lógica de la pantalla de login
+|   |-- login.go             // Lógica de autenticación o introducción de usuarios
+|   |-- screen_factory.go    // Creación y gestión de diferentes pantallas de UI del juego
+|-- utils                    // Utilidades varias para el juego
+|   |-- colors.go            // Definición de colores utilizados en la interfaz del juego y serpientes
