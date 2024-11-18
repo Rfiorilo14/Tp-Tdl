@@ -38,8 +38,8 @@ func (player *Player) SetSnake(snake *Snake) {
 	player.snake = snake
 }
 
-func (player *Player) MoveSnake(direction int) {
-	player.snake.Move()
+func (player *Player) MoveSnake(board *Board, direction string) {
+	player.snake.Move(direction)
 	//aca se podria mover la serpiente y devolver un booleano si murio o no la serpiente y/o
 	// el puntaje que obtuvo en caso de ser posible
 }

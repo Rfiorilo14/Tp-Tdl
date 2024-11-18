@@ -1,17 +1,25 @@
 // snake/snake.go
 package snake
 
+import "image/color"
+
 type Snake struct {
-	ID        int
-	Position  [2]int   // Posición de la cabeza
-	Body      [][2]int // Guarda las posiciones del cuerpo
-	Direction [2]int   // Dirección de movimiento actual
-	Speed     int
-	Alive     bool
-	Length    int
-	Score     int // Nuevo campo para el puntaje del jugador
+	id            int
+	bodyPositions [][2]int // Guarda las posiciones del cuerpo
+	direction     string   // Dirección de movimiento actual
+	speed         int
+	alive         bool
+	color         *color.RGBA
 }
 
+var directions = map[string][2]int{
+	"up":    {0, -1},
+	"down":  {0, 1},
+	"left":  {-1, 0},
+	"right": {1, 0},
+}
+
+/*
 var (
 	Up    = [2]int{0, -1}
 	Down  = [2]int{0, 1}
@@ -19,35 +27,49 @@ var (
 	Right = [2]int{1, 0}
 )
 
+El usuario ingresa en el cliente una tecla. Esa tecla pasa a ser un token. Ese token puede
+ser "up","down","left","right".
+*/
+
 // NewSnake crea una nueva instancia de la serpiente en una posición dada
-func NewSnake(x, y int) *Snake {
-	return &Snake{
-		Position:  [2]int{x, y},
-		Body:      [][2]int{{x, y}}, // Inicializa el cuerpo en la posición inicial
-		Direction: Right,            // Ahora "Right" estará correctamente definida
-		Speed:     1,
-		Alive:     true,
-		Length:    6, // Longitud inicial
+func NewSnake(x, y int, id int) *Snake {
+	snake := &Snake{
+		id:            id,
+		bodyPositions: [][2]int{{x, y}},
+		direction:     "",
+		speed:         1,
+		alive:         true,
 	}
+	return snake
 }
 
-func (s *Snake) Move() {
-	// Calcula la nueva posición de la cabeza
-	newHead := [2]int{s.Position[0] + s.Direction[0], s.Position[1] + s.Direction[1]}
-
-	// Inserta la nueva posición al inicio del cuerpo
-	s.Body = append([][2]int{newHead}, s.Body...)
-
-	// Mantiene la longitud si no ha comido (cuando el tamaño excede la longitud permitida)
-	if len(s.Body) > s.Length {
-		s.Body = s.Body[:len(s.Body)-1] // Elimina el último segmento
-	}
-
-	// Actualizamos la posición de la cabeza
-	s.Position = newHead
+func (snake *Snake) SetInitialDirection(direction string) {
+	snake.direction = direction
 }
 
+func (snake *Snake) SetColor(color *color.RGBA) {
+	snake.color = color
+}
+
+func (snake *Snake) GetColor() *color.RGBA {
+	return snake.color
+}
+
+func (snake *Snake) GetDirection() string {
+	return snake.direction
+}
+
+/*
+Podemos hacer que en caso de que el jugador quiera una direccion que ya esta establecida en su
+snake, se ejecute esta funcion pero no va a cambiar nada
+*/
+func (snake *Snake) Move(direction string) {
+
+}
+
+/*
 // Grow aumenta la longitud de la serpiente al comer
 func (s *Snake) Grow() {
 	s.Length++
 }
+*/

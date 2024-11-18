@@ -3,7 +3,6 @@ package game
 import (
 	"fmt"
 	"image/color"
-	"log"
 	"math/rand"
 	"snake-game/snake"
 	"snake-game/utils"
@@ -18,30 +17,25 @@ import (
 const cellSize = 20
 
 type Game struct {
-	Board             *Board
-	Snakes            []*snake.Snake
-	PlayerNames       []string // Almacena nombres de los jugadores
-	ControlStrategies []ControlStrategy
-	CollisionManager  *CollisionManager
-	GameOver          bool
-	Score             int
-	FoodPosition      [2]int
+	Board       *Board
+	Snakes      []*snake.Snake
+	PlayerNames []string // Almacena nombres de los jugadores
+
+	CollisionManager *CollisionManager //mmm nose
+	GameOver         bool
+	Score            int
 }
 
 func NewGame(board *Board, snakes []*snake.Snake, playerNames []string) *Game {
-	controlStrategies := []ControlStrategy{
-		&ArrowControlStrategy{},
-		&WASDControlStrategy{},
-		&KOLÑControlStrategy{},
-	}
+
 	game := &Game{
-		Board:             board,
-		Snakes:            snakes,
-		PlayerNames:       playerNames,
-		ControlStrategies: controlStrategies,
-		CollisionManager:  &CollisionManager{},
-		GameOver:          false,
-		Score:             0,
+		Board:       board,
+		Snakes:      snakes,
+		PlayerNames: playerNames,
+
+		CollisionManager: &CollisionManager{},
+		GameOver:         false,
+		Score:            0,
 	}
 	game.PlaceRandomFood()
 	return game
@@ -58,6 +52,7 @@ func (g *Game) PlaceRandomFood() {
 	}
 }
 
+/*
 func (g *Game) Update() error {
 	if g.GameOver {
 		return nil
@@ -106,7 +101,9 @@ func (g *Game) Update() error {
 
 	return nil
 }
+*/
 
+// TODO ESTO PARECE QUE PERTENECE A LA INTERFAZ
 func (g *Game) Draw(screen *ebiten.Image) {
 	if g.GameOver {
 		g.ShowRankedTable(screen)
