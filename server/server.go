@@ -40,22 +40,42 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	log.Println("Jugador conectado:", r.RemoteAddr)
 
 	for {
-		// Leer mensaje del cliente
-		messageType, message, err := conn.ReadMessage()
+		var msg shared.Message
+		err := conn.ReadJSON(&msg)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("Error inesperado: %v", err)
-			}
+			log.Printf("Error leyendo mensaje del cliente: %v", err)
 			break
 		}
 
-		log.Printf("Mensaje recibido: %s", message)
+		// Procesar el mensaje recibido
+		switch msg.Type {
+		case "register":
+			log.Printf("Jugador registrado: %s", msg.PlayerID)
+			// Registrar jugador en el estado global
+			gameState.mu.Lock()
+			gameState.Snakes[msg.PlayerID] = &Snake{
+				Body:      []Position{{X: 10, Y: 10}},
+				Direction: "up",
+				PlayerID:  msg.PlayerID,
+				Speed:     200,
+				Alive:     true,
+			}
+			gameState.mu.Unlock()
 
-		// Responder al cliente
-		response := "Mensaje recibido correctamente: " + string(message)
-		err = conn.WriteMessage(messageType, []byte(response))
+		case "move":
+			log.Printf("Jugador %s se movió hacia %s", msg.PlayerID, msg.Direction)
+			// Actualizar dirección del jugador
+			gameState.mu.Lock()
+			if snake, exists := gameState.Snakes[msg.PlayerID]; exists {
+				snake.Direction = msg.Direction
+			}
+			gameState.mu.Unlock()
+		}
+
+		// Enviar estado actualizado del juego al cliente
+		err = conn.WriteJSON(gameState)
 		if err != nil {
-			log.Printf("Error al enviar mensaje: %v", err)
+			log.Printf("Error enviando estado al cliente: %v", err)
 			break
 		}
 	}
