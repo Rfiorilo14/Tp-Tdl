@@ -45,7 +45,6 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error al actualizar conexión:", err)
 		return
 	}
-
 	defer conn.Close()
 
 	var playerName string
@@ -74,10 +73,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 			broadcastWaitingRoom()
 
 		case "start_game":
-			if !serverState.gameStarted {
-				serverState.gameStarted = true
-				startGame()
-			}
+			startGameIfPossible()
 
 		case "player_eliminated":
 			serverState.mu.Lock()
@@ -95,6 +91,30 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		case "return_to_login":
 			resetToLogin()
 		}
+	}
+}
+
+// Inicia el juego si las condiciones son correctas
+func startGameIfPossible() {
+	serverState.mu.Lock()
+	defer serverState.mu.Unlock()
+
+	// Condiciones para iniciar el juego
+	if serverState.currentPlayers > 0 && !serverState.gameStarted {
+		log.Println("Iniciando el juego...")
+		serverState.gameStarted = true // Marca como iniciado solo si se cumplen las condiciones
+		initializeGame()               // Inicializa el tablero y las serpientes
+		startGameLoop()                // Comienza el bucle principal del juego
+
+		// Notificar a los jugadores
+		for _, player := range serverState.players {
+			err := player.Conn.WriteJSON(Message{Type: "start_game"})
+			if err != nil {
+				log.Printf("Error al enviar mensaje de inicio a %s: %s", player.Name, err)
+			}
+		}
+	} else {
+		log.Printf("No se puede iniciar el juego. Jugadores: %d Juego iniciado: %t", serverState.currentPlayers, serverState.gameStarted)
 	}
 }
 
@@ -122,14 +142,23 @@ func broadcastWaitingRoom() {
 // Iniciar la partida
 func startGame() {
 	for _, player := range serverState.players {
-		player.Conn.WriteJSON(Message{
+		err := player.Conn.WriteJSON(Message{
 			Type: "start_game",
 		})
+		if err != nil {
+			log.Printf("Error al enviar mensaje de inicio a %s: %s", player.Name, err)
+		}
 	}
+
+	// Aquí puedes añadir lógica para inicializar el tablero o el estado del juego
+	log.Println("El juego ha comenzado!")
 }
 
 // Verifica si todos los jugadores están eliminados
 func checkEndGame() {
+	serverState.mu.Lock()
+	defer serverState.mu.Unlock()
+
 	if serverState.currentPlayers == 0 {
 		broadcastScoreboard()
 		serverState.gameStarted = false
@@ -157,19 +186,22 @@ func broadcastScoreboard() {
 // Reiniciar la partida con los mismos jugadores
 func restartGame() {
 	serverState.mu.Lock()
+	defer serverState.mu.Unlock()
+
 	serverState.eliminated = []*Player{}
 	serverState.gameStarted = true
-	serverState.mu.Unlock()
 
-	startGame()
+	initializeGame()
+	startGameLoop()
 }
 
 // Regresar a la sala de login
 func resetToLogin() {
 	serverState.mu.Lock()
+	defer serverState.mu.Unlock()
+
 	serverState.eliminated = []*Player{}
 	serverState.gameStarted = false
-	serverState.mu.Unlock()
 
 	broadcastWaitingRoom()
 }
