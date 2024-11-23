@@ -4,22 +4,24 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"snake-game/client"
-	"snake-game/server"
+	"net/http"
 )
 
 func main() {
-	mode := flag.String("mode", "server", "Modo: 'server' para iniciar el servidor, 'client' para iniciar un cliente")
+	// Define el modo de operación: servidor o cliente
+	mode := flag.String("mode", "server", "Modo de operación: server o client")
 	flag.Parse()
 
-	switch *mode {
-	case "server":
+	if *mode == "server" {
 		fmt.Println("Iniciando servidor...")
-		server.StartServer()
-	case "client":
-		fmt.Println("Iniciando cliente...")
-		client.StartClient()
-	default:
-		log.Fatalf("Modo desconocido: %s. Usa 'server' o 'client'.", *mode)
+		http.HandleFunc("/", handleConnections)
+
+		port := ":8080"
+		fmt.Println("Servidor escuchando en", port)
+		log.Fatal(http.ListenAndServe(port, nil))
+	} else if *mode == "client" {
+		runClient()
+	} else {
+		log.Fatalf("Modo desconocido: %s", *mode)
 	}
 }
