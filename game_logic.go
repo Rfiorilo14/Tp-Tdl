@@ -47,6 +47,7 @@ func initializeGame() {
 	startingPositions := []Position{
 		{X: 3, Y: 3},
 		{X: boardWidth - 4, Y: 3},
+		{X: 3, Y: boardHeight - 4},
 	}
 	i := 0
 	for playerID := range serverState.players {
@@ -57,10 +58,16 @@ func initializeGame() {
 			PlayerID:  playerID,
 		}
 		i++
+		if i >= len(startingPositions) {
+			startingPositions = append(startingPositions, Position{X: rand.Intn(boardWidth), Y: rand.Intn(boardHeight)})
+		}
 	}
 
-	// Colocar comida inicial
-	spawnFood()
+	// Garantizar que haya comida inicial
+	if len(gameState.Food) == 0 {
+		spawnFood()
+	}
+	log.Printf("Estado inicial del juego: %+v", gameState)
 }
 
 func moveSnake(snake *Snake) {
@@ -85,7 +92,7 @@ func moveSnake(snake *Snake) {
 	// Insertar la nueva cabeza
 	snake.Body = append([]Position{newHead}, snake.Body...)
 
-	// Eliminar la cola para mantener el tamaño
+	// Eliminar la cola si no creció
 	snake.Body = snake.Body[:len(snake.Body)-1]
 }
 
@@ -184,23 +191,17 @@ func updateGameState() {
 }
 
 func startGameLoop() {
+	initializeGame()
 	go func() {
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
 
+		broadcastGameState() // Difundir estado inicial
+
 		for serverState.gameStarted {
 			<-ticker.C
-			gameState.mu.Lock()
-			for _, snake := range gameState.Snakes {
-				if snake.Alive {
-					moveSnake(snake)
-					checkCollisions(snake)
-				}
-			}
-			gameState.mu.Unlock()
-
-			// Intentar difundir el estado del juego
-			broadcastGameState()
+			updateGameState()    // Actualizar posiciones y colisiones
+			broadcastGameState() // Difundir el estado actualizado
 		}
 	}()
 }
@@ -219,7 +220,6 @@ func broadcastGameState() {
 	gameState.mu.Lock()
 	defer gameState.mu.Unlock()
 
-	// Construir el estado actual del juego
 	state := Message{
 		Type:   "game_state",
 		Snakes: make(map[string][]Position),
@@ -227,21 +227,22 @@ func broadcastGameState() {
 	}
 
 	for playerID, snake := range gameState.Snakes {
-		state.Snakes[playerID] = snake.Body
+		if snake.Alive {
+			state.Snakes[playerID] = snake.Body
+		}
 	}
 
-	// Enviar estado a todos los jugadores conectados
+	log.Printf("Estado a enviar: %+v", state)
+
 	for playerID, player := range serverState.players {
 		if player.Conn == nil {
-			log.Printf("Jugador %s tiene una conexión nula, eliminándolo.", playerID)
 			removePlayer(playerID)
 			continue
 		}
-
 		err := player.Conn.WriteJSON(state)
 		if err != nil {
-			log.Printf("Error enviando estado a %s: %s. Eliminando jugador.", playerID, err)
-			removePlayer(playerID) // Si falla, eliminar al jugador
+			log.Printf("Error enviando estado a %s: %v", playerID, err)
+			removePlayer(playerID)
 		}
 	}
 }

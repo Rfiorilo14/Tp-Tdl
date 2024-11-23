@@ -90,6 +90,22 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 		case "return_to_login":
 			resetToLogin()
+		case "update_direction":
+			serverState.mu.Lock()
+			if snake, exists := gameState.Snakes[msg.PlayerName]; exists && snake.Alive {
+				// Actualizar la dirección de la serpiente
+				validDirections := map[string]bool{
+					"up":    true,
+					"down":  true,
+					"left":  true,
+					"right": true,
+				}
+				if validDirections[msg.Content] {
+					snake.Direction = msg.Content
+				}
+			}
+			serverState.mu.Unlock()
+
 		}
 	}
 }

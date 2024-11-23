@@ -27,18 +27,33 @@ type Game struct {
 // Update procesa la lógica del juego
 func (g *Game) Update() error {
 	if g.state == "waiting_room" && ebiten.IsKeyPressed(ebiten.KeyEnter) {
-		// Solo envía el mensaje una vez
 		err := g.conn.WriteJSON(Message{Type: "start_game"})
 		if err != nil {
 			log.Println("Error al enviar mensaje de inicio:", err)
 		}
-	} else if g.state == "scoreboard" {
-		if ebiten.IsKeyPressed(ebiten.KeyR) {
-			g.conn.WriteJSON(Message{Type: "restart_game"})
-			g.state = "waiting_room"
-		} else if ebiten.IsKeyPressed(ebiten.KeyL) {
-			g.conn.WriteJSON(Message{Type: "return_to_login"})
-			g.state = "waiting_room"
+	} else if g.state == "playing" {
+		// Capturar la dirección basada en teclas
+		var newDirection string
+		if ebiten.IsKeyPressed(ebiten.KeyArrowUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
+			newDirection = "up"
+		} else if ebiten.IsKeyPressed(ebiten.KeyArrowDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
+			newDirection = "down"
+		} else if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
+			newDirection = "left"
+		} else if ebiten.IsKeyPressed(ebiten.KeyArrowRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
+			newDirection = "right"
+		}
+
+		// Enviar la dirección al servidor si cambió
+		if newDirection != "" {
+			err := g.conn.WriteJSON(Message{
+				Type:       "update_direction",
+				PlayerName: "", // El servidor debe identificar al jugador
+				Content:    newDirection,
+			})
+			if err != nil {
+				log.Println("Error al enviar nueva dirección:", err)
+			}
 		}
 	}
 	return nil
@@ -67,14 +82,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		text.Draw(screen, "Presiona R para reiniciar", face, 10, y+40, color.White)
 		text.Draw(screen, "Presiona L para volver a la sala de login", face, 10, y+60, color.White)
 	} else if g.state == "playing" {
-		// Dibujar el tablero
-		for _, snake := range g.snakes {
+		// Dibujar las serpientes
+		for _, snake := range g.snakes { // Ignoramos el playerID
 			for _, segment := range snake {
 				ebitenutil.DrawRect(screen, float64(segment.X*20), float64(segment.Y*20), 20, 20, color.RGBA{0, 255, 0, 255})
 			}
 		}
 
-		// Dibujar comida
+		// Dibujar la comida
 		for _, food := range g.food {
 			ebitenutil.DrawRect(screen, float64(food.X*20), float64(food.Y*20), 20, 20, color.RGBA{255, 0, 0, 255})
 		}
@@ -100,19 +115,16 @@ func listenToServer(conn *websocket.Conn, game *Game) {
 			game.waitingPlayers = msg.Players
 		case "start_game":
 			game.state = "playing"
-		case "scoreboard":
-			game.scoreboard = msg.Players
-			game.state = "scoreboard"
-		case "game_state": // Nuevo caso para manejar el estado del juego
-			if len(msg.Snakes) == 0 {
-				log.Println("Error: No se recibieron serpientes en el estado del juego.")
-			}
+		case "game_state":
+			// Actualiza el estado del juego con las serpientes y la comida
 			game.snakes = make(map[string][]Position)
-			for playerID, snakeBody := range msg.Snakes {
+			for playerID, snakeBody := range msg.Snakes { // Restauramos playerID
 				game.snakes[playerID] = snakeBody
 			}
 			game.food = msg.Food
-
+		case "scoreboard":
+			game.state = "scoreboard"
+			game.scoreboard = msg.Players
 		}
 	}
 }
