@@ -51,12 +51,30 @@ func initializeGame() {
 	}
 	i := 0
 	for playerID := range serverState.players {
-		gameState.Snakes[playerID] = &Snake{
-			Body:      []Position{startingPositions[i]},
+		initialLength := 5 // Define el tamaño inicial de la serpiente
+		body := make([]Position, initialLength)
+		for j := 0; j < initialLength; j++ {
+			// Posiciona los segmentos consecutivos horizontalmente
+			body[j] = Position{X: startingPositions[i].X - j, Y: startingPositions[i].Y}
+		}
+
+		snake := &Snake{
+			Body:      body,
 			Direction: "right",
 			Alive:     true,
 			PlayerID:  playerID,
 		}
+		gameState.Snakes[playerID] = snake
+
+		// Lanzar una goroutine para manejar la serpiente
+		go func(s *Snake) {
+			for s.Alive {
+				moveSnake(s)
+				checkCollisions(s)
+				time.Sleep(time.Millisecond * 200) // Ajusta la velocidad aquí
+			}
+		}(snake)
+
 		i++
 		if i >= len(startingPositions) {
 			startingPositions = append(startingPositions, Position{X: rand.Intn(boardWidth), Y: rand.Intn(boardHeight)})
@@ -192,6 +210,7 @@ func updateGameState() {
 
 func startGameLoop() {
 	initializeGame()
+
 	go func() {
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
@@ -200,8 +219,7 @@ func startGameLoop() {
 
 		for serverState.gameStarted {
 			<-ticker.C
-			updateGameState()    // Actualizar posiciones y colisiones
-			broadcastGameState() // Difundir el estado actualizado
+			broadcastGameState() // Solo enviar el estado actualizado
 		}
 	}()
 }
