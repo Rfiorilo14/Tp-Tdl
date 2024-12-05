@@ -27,8 +27,8 @@ type Snake struct {
 }
 
 var (
-	boardWidth  = 20
-	boardHeight = 20
+	boardWidth  = 32
+	boardHeight = 30
 	gameState   = struct {
 		Snakes map[string]*Snake
 		Food   []Position
