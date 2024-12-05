@@ -23,6 +23,7 @@ type Game struct {
 	playerName     string                // Nombre del jugador
 	snakes         map[string][]Position // Posiciones de las serpientes (por jugador)
 	food           []Position            // Posiciones de la comida
+	lastDirection  string                // Última dirección enviada al servidor
 }
 
 // Update procesa la lógica del juego
@@ -45,18 +46,19 @@ func (g *Game) Update() error {
 			newDirection = "right"
 		}
 
-		// Enviar la dirección al servidor si cambió
-		if newDirection != "" {
+		// Solo enviar la dirección si cambió
+		if newDirection != "" && newDirection != g.lastDirection {
 			err := g.conn.WriteJSON(Message{
 				Type:       "update_direction",
-				PlayerName: g.playerName, // Incluye el nombre del jugador
+				PlayerName: g.playerName,
 				Content:    newDirection,
 			})
 			if err != nil {
 				log.Println("Error al enviar nueva dirección:", err)
+			} else {
+				g.lastDirection = newDirection // Actualizar solo si se envió con éxito
 			}
 		}
-
 	}
 	return nil
 }
@@ -64,7 +66,8 @@ func (g *Game) Update() error {
 // Draw dibuja los elementos en pantalla
 func (g *Game) Draw(screen *ebiten.Image) {
 	face := basicfont.Face7x13
-
+	// Asegúrate de calcular cellWidth y cellHeight al iniciar
+	initializeDimensions(640, 480) // Usa los valores del Layout aquí
 	if g.state == "waiting_room" {
 		text.Draw(screen, "Sala de Espera", face, 10, 20, color.White)
 		y := 40
@@ -84,24 +87,25 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		text.Draw(screen, "Presiona R para reiniciar", face, 10, y+40, color.White)
 		text.Draw(screen, "Presiona L para volver a la sala de login", face, 10, y+60, color.White)
 	} else if g.state == "playing" {
-		// Dibujar las serpientes
-		for _, snake := range g.snakes { // Ignoramos el playerID
+		for _, snake := range g.snakes {
 			for _, segment := range snake {
-				ebitenutil.DrawRect(screen, float64(segment.X*20), float64(segment.Y*20), 20, 20, color.RGBA{0, 255, 0, 255})
+				x := float64(segment.X * cellWidth)
+				y := float64(segment.Y * cellHeight)
+				ebitenutil.DrawRect(screen, x, y, float64(cellWidth), float64(cellHeight), color.RGBA{0, 255, 0, 255})
 			}
 		}
 
-		// Dibujar la comida
 		for _, food := range g.food {
-			ebitenutil.DrawRect(screen, float64(food.X*20), float64(food.Y*20), 20, 20, color.RGBA{255, 0, 0, 255})
+			x := float64(food.X * cellWidth)
+			y := float64(food.Y * cellHeight)
+			ebitenutil.DrawRect(screen, x, y, float64(cellWidth), float64(cellHeight), color.RGBA{255, 0, 0, 255})
 		}
 	}
 }
 
-// Layout define el tamaño de la pantalla del juego
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	// Definir un tamaño fijo para la ventana de juego
-	return 640, 480
+	initializeDimensions(outsideWidth, outsideHeight)
+	return outsideWidth, outsideHeight
 }
 
 func listenToServer(conn *websocket.Conn, game *Game) {
@@ -109,9 +113,10 @@ func listenToServer(conn *websocket.Conn, game *Game) {
 		var msg Message
 		if err := conn.ReadJSON(&msg); err != nil {
 			log.Println("Error al recibir mensaje:", err)
-			return
+			// No retornamos, seguimos escuchando
+			continue
 		}
-
+		// Manejar el mensaje recibido
 		switch msg.Type {
 		case "waiting_room":
 			game.waitingPlayers = msg.Players
@@ -120,7 +125,7 @@ func listenToServer(conn *websocket.Conn, game *Game) {
 		case "game_state":
 			// Actualiza el estado del juego con las serpientes y la comida
 			game.snakes = make(map[string][]Position)
-			for playerID, snakeBody := range msg.Snakes { // Restauramos playerID
+			for playerID, snakeBody := range msg.Snakes {
 				game.snakes[playerID] = snakeBody
 			}
 			game.food = msg.Food
@@ -185,6 +190,16 @@ func handleInput(conn *websocket.Conn, game *Game) {
 			if err := conn.WriteJSON(msg); err != nil {
 				log.Println("Error al enviar mensaje:", err)
 			}
+		}
+	}
+}
+
+func drawGrid(screen *ebiten.Image) {
+	for x := 0; x < boardWidth; x++ {
+		for y := 0; y < boardHeight; y++ {
+			rectX := float64(x * cellWidth)
+			rectY := float64(y * cellHeight)
+			ebitenutil.DrawRect(screen, rectX, rectY, float64(cellWidth), float64(cellHeight), color.RGBA{0, 0, 0, 255})
 		}
 	}
 }

@@ -27,9 +27,7 @@ type Snake struct {
 }
 
 var (
-	boardWidth  = 32
-	boardHeight = 30
-	gameState   = struct {
+	gameState = struct {
 		Snakes map[string]*Snake
 		Food   []Position
 		mu     sync.Mutex
@@ -38,6 +36,23 @@ var (
 		Food:   []Position{{X: 5, Y: 5}},
 	}
 )
+
+const (
+	defaultWidth  = 800 // Ancho de la ventana
+	defaultHeight = 600 // Alto de la ventana
+	boardWidth    = 40  // Número de columnas
+	boardHeight   = 30  // Número de filas
+)
+
+var (
+	cellWidth  int
+	cellHeight int
+)
+
+func initializeDimensions(screenWidth, screenHeight int) {
+	cellWidth = screenWidth / boardWidth
+	cellHeight = screenHeight / boardHeight
+}
 
 func initializeGame() {
 	gameState.mu.Lock()
@@ -120,11 +135,10 @@ func checkCollisions(snake *Snake) {
 
 	head := snake.Body[0]
 
-	// Colisión con bordes
-	if head.X < 0 || head.Y < 0 || head.X >= boardWidth || head.Y >= boardHeight {
+	// Colisiones con los bordes lógicos
+	if head.X < 0 || head.X >= boardWidth || head.Y < 0 || head.Y >= boardHeight {
 		log.Printf("Jugador %s chocó contra el borde", snake.PlayerID)
 		snake.Alive = false
-		removePlayer(snake.PlayerID)
 		return
 	}
 
@@ -218,10 +232,39 @@ func startGameLoop() {
 		broadcastGameState() // Difundir estado inicial
 
 		for serverState.gameStarted {
-			<-ticker.C
-			broadcastGameState() // Solo enviar el estado actualizado
+			select {
+			case <-ticker.C:
+				broadcastGameState() // Actualizar el estado del juego
+			case msg := <-directionUpdates:
+				// Procesar la dirección recibida
+				updateSnakeDirection(msg)
+			}
 		}
 	}()
+}
+
+var directionUpdates = make(chan Message, 100)
+
+func updateSnakeDirection(msg Message) {
+	gameState.mu.Lock()
+	defer gameState.mu.Unlock()
+
+	if snake, exists := gameState.Snakes[msg.PlayerName]; exists && snake.Alive {
+		oppositeDirections := map[string]string{
+			"up":    "down",
+			"down":  "up",
+			"left":  "right",
+			"right": "left",
+		}
+
+		// Evitar solo direcciones opuestas
+		if msg.Content != oppositeDirections[snake.Direction] {
+			snake.Direction = msg.Content
+			log.Printf("Dirección actualizada para %s: %s", msg.PlayerName, msg.Content)
+		} else {
+			log.Printf("Dirección inválida para %s: %s (opuesta a %s)", msg.PlayerName, msg.Content, snake.Direction)
+		}
+	}
 }
 
 func removePlayer(playerID string) {
