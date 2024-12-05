@@ -92,20 +92,29 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 			resetToLogin()
 		case "update_direction":
 			serverState.mu.Lock()
+			defer serverState.mu.Unlock()
+
 			if snake, exists := gameState.Snakes[msg.PlayerName]; exists && snake.Alive {
-				// Actualizar la dirección de la serpiente
-				validDirections := map[string]bool{
-					"up":    true,
-					"down":  true,
-					"left":  true,
-					"right": true,
+				// Validar la nueva dirección y evitar movimientos opuestos
+				oppositeDirections := map[string]string{
+					"up":    "down",
+					"down":  "up",
+					"left":  "right",
+					"right": "left",
 				}
-				if validDirections[msg.Content] {
-					snake.Direction = msg.Content
+
+				if msg.Content != oppositeDirections[snake.Direction] { // Evitar dirección opuesta
+					validDirections := map[string]bool{
+						"up":    true,
+						"down":  true,
+						"left":  true,
+						"right": true,
+					}
+					if validDirections[msg.Content] {
+						snake.Direction = msg.Content
+					}
 				}
 			}
-			serverState.mu.Unlock()
-
 		}
 	}
 }

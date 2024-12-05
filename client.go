@@ -20,6 +20,7 @@ type Game struct {
 	waitingPlayers []string              // Jugadores en la sala de espera
 	scoreboard     []string              // Tabla de puntuaciones
 	conn           *websocket.Conn       // Conexión WebSocket
+	playerName     string                // Nombre del jugador
 	snakes         map[string][]Position // Posiciones de las serpientes (por jugador)
 	food           []Position            // Posiciones de la comida
 }
@@ -48,13 +49,14 @@ func (g *Game) Update() error {
 		if newDirection != "" {
 			err := g.conn.WriteJSON(Message{
 				Type:       "update_direction",
-				PlayerName: "", // El servidor debe identificar al jugador
+				PlayerName: g.playerName, // Incluye el nombre del jugador
 				Content:    newDirection,
 			})
 			if err != nil {
 				log.Println("Error al enviar nueva dirección:", err)
 			}
 		}
+
 	}
 	return nil
 }
@@ -163,8 +165,9 @@ func runClient() {
 
 	// Inicializar el juego
 	game := &Game{
-		state: "waiting_room",
-		conn:  conn,
+		state:      "waiting_room",
+		conn:       conn,
+		playerName: playerName, // Asigna el nombre del jugador
 	}
 	go listenToServer(conn, game)
 
