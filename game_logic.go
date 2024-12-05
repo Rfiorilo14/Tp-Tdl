@@ -221,7 +221,6 @@ func updateGameState() {
 		}
 	}
 }
-
 func startGameLoop() {
 	initializeGame()
 
@@ -257,10 +256,10 @@ func updateSnakeDirection(msg Message) {
 			"right": "left",
 		}
 
-		// Evitar solo direcciones opuestas
+		// Permitir solo direcciones válidas que no sean opuestas
 		if msg.Content != oppositeDirections[snake.Direction] {
+			log.Printf("Actualizando dirección para %s: %s -> %s", msg.PlayerName, snake.Direction, msg.Content)
 			snake.Direction = msg.Content
-			log.Printf("Dirección actualizada para %s: %s", msg.PlayerName, msg.Content)
 		} else {
 			log.Printf("Dirección inválida para %s: %s (opuesta a %s)", msg.PlayerName, msg.Content, snake.Direction)
 		}

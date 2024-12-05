@@ -48,6 +48,7 @@ func (g *Game) Update() error {
 
 		// Solo enviar la dirección si cambió
 		if newDirection != "" && newDirection != g.lastDirection {
+			log.Printf("Intentando enviar dirección: %s (última: %s)", newDirection, g.lastDirection)
 			err := g.conn.WriteJSON(Message{
 				Type:       "update_direction",
 				PlayerName: g.playerName,
