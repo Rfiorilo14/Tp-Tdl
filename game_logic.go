@@ -20,10 +20,10 @@ type Position struct {
 }
 
 type Snake struct {
-	Body      []Position // Cuerpo de la serpiente
-	Direction string     // Dirección actual ("up", "down", "left", "right")
-	PlayerID  string     // ID del jugador propietario
-	Alive     bool       // Si la serpiente está activa
+	Body      []Position
+	Direction string
+	PlayerID  string
+	Alive     bool
 }
 
 var (
@@ -38,10 +38,10 @@ var (
 )
 
 const (
-	defaultWidth  = 800 // Ancho de la ventana
-	defaultHeight = 600 // Alto de la ventana
-	boardWidth    = 40  // Número de columnas
-	boardHeight   = 30  // Número de filas
+	defaultWidth  = 800
+	defaultHeight = 600
+	boardWidth    = 40
+	boardHeight   = 30
 )
 
 var (
@@ -49,16 +49,17 @@ var (
 	cellHeight int
 )
 
+// initializeDimensions calcula las dimensiones de las celdas basado en el tamaño del tablero.
 func initializeDimensions(screenWidth, screenHeight int) {
 	cellWidth = screenWidth / boardWidth
 	cellHeight = screenHeight / boardHeight
 }
 
+// initializeGame inicializa el estado del juego, creando serpientes y comida inicial.
 func initializeGame() {
 	gameState.mu.Lock()
 	defer gameState.mu.Unlock()
 
-	// Crear serpientes para los jugadores
 	startingPositions := []Position{
 		{X: 3, Y: 3},
 		{X: boardWidth - 4, Y: 3},
@@ -66,10 +67,9 @@ func initializeGame() {
 	}
 	i := 0
 	for playerID := range serverState.players {
-		initialLength := 5 // Define el tamaño inicial de la serpiente
+		initialLength := 5
 		body := make([]Position, initialLength)
 		for j := 0; j < initialLength; j++ {
-			// Posiciona los segmentos consecutivos horizontalmente
 			body[j] = Position{X: startingPositions[i].X - j, Y: startingPositions[i].Y}
 		}
 
@@ -81,12 +81,11 @@ func initializeGame() {
 		}
 		gameState.Snakes[playerID] = snake
 
-		// Lanzar una goroutine para manejar la serpiente
 		go func(s *Snake) {
 			for s.Alive {
 				moveSnake(s)
 				checkCollisions(s)
-				time.Sleep(time.Millisecond * 200) // Ajusta la velocidad aquí
+				time.Sleep(time.Millisecond * 200)
 			}
 		}(snake)
 
@@ -96,13 +95,13 @@ func initializeGame() {
 		}
 	}
 
-	// Garantizar que haya comida inicial
 	if len(gameState.Food) == 0 {
 		spawnFood()
 	}
 	log.Printf("Estado inicial del juego: %+v", gameState)
 }
 
+// moveSnake mueve la serpiente en la dirección actual y ajusta su posición.
 func moveSnake(snake *Snake) {
 	if !snake.Alive {
 		return
@@ -122,27 +121,23 @@ func moveSnake(snake *Snake) {
 		newHead = Position{X: head.X + 1, Y: head.Y}
 	}
 
-	// Insertar la nueva cabeza
 	snake.Body = append([]Position{newHead}, snake.Body...)
-
-	// Eliminar la cola si no creció
 	snake.Body = snake.Body[:len(snake.Body)-1]
 }
 
+// checkCollisions verifica si una serpiente ha colisionado y maneja las consecuencias.
 func checkCollisions(snake *Snake) {
 	gameState.mu.Lock()
 	defer gameState.mu.Unlock()
 
 	head := snake.Body[0]
 
-	// Colisiones con los bordes lógicos
 	if head.X < 0 || head.X >= boardWidth || head.Y < 0 || head.Y >= boardHeight {
 		log.Printf("Jugador %s chocó contra el borde", snake.PlayerID)
 		snake.Alive = false
 		return
 	}
 
-	// Colisión consigo misma
 	for _, segment := range snake.Body[1:] {
 		if segment == head {
 			log.Printf("Jugador %s chocó consigo mismo", snake.PlayerID)
@@ -152,7 +147,6 @@ func checkCollisions(snake *Snake) {
 		}
 	}
 
-	// Colisión con otras serpientes
 	for _, otherSnake := range gameState.Snakes {
 		if otherSnake.PlayerID != snake.PlayerID && otherSnake.Alive {
 			for _, segment := range otherSnake.Body {
@@ -169,29 +163,27 @@ func checkCollisions(snake *Snake) {
 	for i, food := range gameState.Food {
 		if food == head {
 			log.Printf("Jugador %s comió comida", snake.PlayerID)
-
-			// Agregar un nuevo segmento a la serpiente
 			tail := snake.Body[len(snake.Body)-1]
 			snake.Body = append(snake.Body, tail)
 
-			// Eliminar comida y generar una nueva
 			gameState.Food = append(gameState.Food[:i], gameState.Food[i+1:]...)
 			spawnFood()
 			return
 		}
 	}
 }
+
+// spawnFood genera comida en una posición aleatoria del tablero.
 func spawnFood() {
 	foodPosition := Position{
 		X: rand.Intn(boardWidth),
 		Y: rand.Intn(boardHeight),
 	}
 
-	// Asegurarse de que no haya colisión con una serpiente u obstáculo
 	for _, snake := range gameState.Snakes {
 		for _, segment := range snake.Body {
 			if segment == foodPosition {
-				spawnFood() // Intentar de nuevo
+				spawnFood()
 				return
 			}
 		}
@@ -200,16 +192,7 @@ func spawnFood() {
 	gameState.Food = append(gameState.Food, foodPosition)
 }
 
-var gameBoard = struct {
-	Grid   [][]CellType      // Representación de la matriz del tablero
-	Snakes map[string]*Snake // Serpientes asociadas a jugadores
-	Food   Position          // Posición de la comida
-	mu     sync.Mutex        // Mutex para concurrencia
-}{
-	Grid:   make([][]CellType, boardHeight),
-	Snakes: make(map[string]*Snake),
-}
-
+// updateGameState actualiza el estado global del juego.
 func updateGameState() {
 	gameState.mu.Lock()
 	defer gameState.mu.Unlock()
@@ -221,6 +204,8 @@ func updateGameState() {
 		}
 	}
 }
+
+// startGameLoop inicia el bucle principal del juego.
 func startGameLoop() {
 	initializeGame()
 
@@ -228,14 +213,13 @@ func startGameLoop() {
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
 
-		broadcastGameState() // Difundir estado inicial
+		broadcastGameState()
 
 		for serverState.gameStarted {
 			select {
 			case <-ticker.C:
-				broadcastGameState() // Actualizar el estado del juego
+				broadcastGameState()
 			case msg := <-directionUpdates:
-				// Procesar la dirección recibida
 				updateSnakeDirection(msg)
 			}
 		}
@@ -244,6 +228,7 @@ func startGameLoop() {
 
 var directionUpdates = make(chan Message, 100)
 
+// updateSnakeDirection actualiza la dirección de una serpiente según los mensajes del cliente.
 func updateSnakeDirection(msg Message) {
 	gameState.mu.Lock()
 	defer gameState.mu.Unlock()
@@ -256,7 +241,6 @@ func updateSnakeDirection(msg Message) {
 			"right": "left",
 		}
 
-		// Permitir solo direcciones válidas que no sean opuestas
 		if msg.Content != oppositeDirections[snake.Direction] {
 			log.Printf("Actualizando dirección para %s: %s -> %s", msg.PlayerName, snake.Direction, msg.Content)
 			snake.Direction = msg.Content
@@ -266,6 +250,7 @@ func updateSnakeDirection(msg Message) {
 	}
 }
 
+// removePlayer elimina un jugador del juego.
 func removePlayer(playerID string) {
 	gameState.mu.Lock()
 	defer gameState.mu.Unlock()
@@ -276,6 +261,7 @@ func removePlayer(playerID string) {
 	}
 }
 
+// broadcastGameState difunde el estado actual del juego a todos los jugadores conectados.
 func broadcastGameState() {
 	gameState.mu.Lock()
 	defer gameState.mu.Unlock()

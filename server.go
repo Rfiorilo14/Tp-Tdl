@@ -8,16 +8,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Estado del servidor
+// ServerState representa el estado global del servidor.
 type ServerState struct {
-	players        map[string]*Player // Jugadores conectados
-	eliminated     []*Player          // Jugadores eliminados
-	gameStarted    bool               // Indica si el juego comenzó
-	currentPlayers int                // Número de jugadores en la partida
-	mu             sync.Mutex         // Mutex para manejar concurrencia
+	players        map[string]*Player
+	eliminated     []*Player
+	gameStarted    bool
+	currentPlayers int
+	mu             sync.Mutex
 }
 
-// Inicializa el estado del servidor
 var serverState = &ServerState{
 	players:        make(map[string]*Player),
 	eliminated:     []*Player{},
@@ -25,20 +24,19 @@ var serverState = &ServerState{
 	currentPlayers: 0,
 }
 
-// Estructura del jugador
+// Player representa a un jugador conectado.
 type Player struct {
 	Name string
 	Conn *websocket.Conn
 }
 
-// Manejador de WebSocket
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Permitir todas las conexiones
+		return true
 	},
 }
 
-// Maneja nuevas conexiones WebSocket
+// handleConnections maneja nuevas conexiones WebSocket.
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -49,7 +47,6 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 	var playerName string
 
-	// Procesar mensajes del cliente
 	for {
 		var msg Message
 		err := conn.ReadJSON(&msg)
@@ -90,27 +87,24 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 		case "return_to_login":
 			resetToLogin()
+
 		case "update_direction":
 			updateSnakeDirection(msg)
-
 		}
 	}
-
 }
 
-// Inicia el juego si las condiciones son correctas
+// startGameIfPossible inicia el juego si las condiciones son correctas.
 func startGameIfPossible() {
 	serverState.mu.Lock()
 	defer serverState.mu.Unlock()
 
-	// Condiciones para iniciar el juego
 	if serverState.currentPlayers > 0 && !serverState.gameStarted {
 		log.Println("Iniciando el juego...")
-		serverState.gameStarted = true // Marca como iniciado solo si se cumplen las condiciones
-		initializeGame()               // Inicializa el tablero y las serpientes
-		startGameLoop()                // Comienza el bucle principal del juego
+		serverState.gameStarted = true
+		initializeGame()
+		startGameLoop()
 
-		// Notificar a los jugadores
 		for _, player := range serverState.players {
 			err := player.Conn.WriteJSON(Message{Type: "start_game"})
 			if err != nil {
@@ -122,7 +116,7 @@ func startGameIfPossible() {
 	}
 }
 
-// Difundir la sala de espera a todos los jugadores
+// broadcastWaitingRoom envía la lista de jugadores en la sala de espera a todos los clientes.
 func broadcastWaitingRoom() {
 	serverState.mu.Lock()
 	defer serverState.mu.Unlock()
@@ -143,7 +137,7 @@ func broadcastWaitingRoom() {
 	}
 }
 
-// Iniciar la partida
+// startGame notifica a los jugadores que la partida ha comenzado.
 func startGame() {
 	for _, player := range serverState.players {
 		err := player.Conn.WriteJSON(Message{
@@ -153,12 +147,10 @@ func startGame() {
 			log.Printf("Error al enviar mensaje de inicio a %s: %s", player.Name, err)
 		}
 	}
-
-	// Aquí puedes añadir lógica para inicializar el tablero o el estado del juego
 	log.Println("El juego ha comenzado!")
 }
 
-// Verifica si todos los jugadores están eliminados
+// checkEndGame verifica si todos los jugadores están eliminados.
 func checkEndGame() {
 	serverState.mu.Lock()
 	defer serverState.mu.Unlock()
@@ -169,7 +161,7 @@ func checkEndGame() {
 	}
 }
 
-// Difundir la tabla de puntuaciones
+// broadcastScoreboard envía la tabla de puntuaciones a todos los clientes.
 func broadcastScoreboard() {
 	scoreboard := []string{}
 	for _, player := range serverState.eliminated {
@@ -187,7 +179,7 @@ func broadcastScoreboard() {
 	}
 }
 
-// Reiniciar la partida con los mismos jugadores
+// restartGame reinicia la partida con los mismos jugadores.
 func restartGame() {
 	serverState.mu.Lock()
 	defer serverState.mu.Unlock()
@@ -199,7 +191,7 @@ func restartGame() {
 	startGameLoop()
 }
 
-// Regresar a la sala de login
+// resetToLogin regresa a todos los jugadores a la sala de login.
 func resetToLogin() {
 	serverState.mu.Lock()
 	defer serverState.mu.Unlock()

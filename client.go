@@ -16,17 +16,17 @@ import (
 )
 
 type Game struct {
-	state          string                // "waiting_room", "playing" o "scoreboard"
-	waitingPlayers []string              // Jugadores en la sala de espera
-	scoreboard     []string              // Tabla de puntuaciones
-	conn           *websocket.Conn       // Conexión WebSocket
-	playerName     string                // Nombre del jugador
-	snakes         map[string][]Position // Posiciones de las serpientes (por jugador)
-	food           []Position            // Posiciones de la comida
-	lastDirection  string                // Última dirección enviada al servidor
+	state          string
+	waitingPlayers []string
+	scoreboard     []string
+	conn           *websocket.Conn
+	playerName     string
+	snakes         map[string][]Position
+	food           []Position
+	lastDirection  string
 }
 
-// Update procesa la lógica del juego
+// Update procesa la lógica del juego, incluyendo teclas y cambios de estado.
 func (g *Game) Update() error {
 	if g.state == "waiting_room" && ebiten.IsKeyPressed(ebiten.KeyEnter) {
 		err := g.conn.WriteJSON(Message{Type: "start_game"})
@@ -34,7 +34,6 @@ func (g *Game) Update() error {
 			log.Println("Error al enviar mensaje de inicio:", err)
 		}
 	} else if g.state == "playing" {
-		// Capturar la dirección basada en teclas
 		var newDirection string
 		if ebiten.IsKeyPressed(ebiten.KeyArrowUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
 			newDirection = "up"
@@ -46,7 +45,6 @@ func (g *Game) Update() error {
 			newDirection = "right"
 		}
 
-		// Solo enviar la dirección si cambió
 		if newDirection != "" && newDirection != g.lastDirection {
 			log.Printf("Intentando enviar dirección: %s (última: %s)", newDirection, g.lastDirection)
 			err := g.conn.WriteJSON(Message{
@@ -57,18 +55,17 @@ func (g *Game) Update() error {
 			if err != nil {
 				log.Println("Error al enviar nueva dirección:", err)
 			} else {
-				g.lastDirection = newDirection // Actualizar solo si se envió con éxito
+				g.lastDirection = newDirection
 			}
 		}
 	}
 	return nil
 }
 
-// Draw dibuja los elementos en pantalla
+// Draw dibuja los elementos visuales del juego según el estado actual.
 func (g *Game) Draw(screen *ebiten.Image) {
 	face := basicfont.Face7x13
-	// Asegúrate de calcular cellWidth y cellHeight al iniciar
-	initializeDimensions(640, 480) // Usa los valores del Layout aquí
+	initializeDimensions(640, 480)
 	if g.state == "waiting_room" {
 		text.Draw(screen, "Sala de Espera", face, 10, 20, color.White)
 		y := 40
@@ -104,27 +101,26 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 }
 
+// Layout ajusta el tamaño de la pantalla según las dimensiones externas.
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	initializeDimensions(outsideWidth, outsideHeight)
 	return outsideWidth, outsideHeight
 }
 
+// listenToServer escucha mensajes del servidor y actualiza el estado del juego.
 func listenToServer(conn *websocket.Conn, game *Game) {
 	for {
 		var msg Message
 		if err := conn.ReadJSON(&msg); err != nil {
 			log.Println("Error al recibir mensaje:", err)
-			// No retornamos, seguimos escuchando
 			continue
 		}
-		// Manejar el mensaje recibido
 		switch msg.Type {
 		case "waiting_room":
 			game.waitingPlayers = msg.Players
 		case "start_game":
 			game.state = "playing"
 		case "game_state":
-			// Actualiza el estado del juego con las serpientes y la comida
 			game.snakes = make(map[string][]Position)
 			for playerID, snakeBody := range msg.Snakes {
 				game.snakes[playerID] = snakeBody
@@ -137,7 +133,7 @@ func listenToServer(conn *websocket.Conn, game *Game) {
 	}
 }
 
-// Solicitar el nombre del jugador desde la entrada estándar
+// askPlayerName solicita al usuario que ingrese su nombre para usar en el juego.
 func askPlayerName() string {
 	fmt.Print("Ingresa tu nombre: ")
 	reader := bufio.NewReader(os.Stdin)
@@ -150,11 +146,9 @@ func askPlayerName() string {
 	return name
 }
 
+// runClient inicializa el cliente, conecta al servidor y ejecuta el juego.
 func runClient() {
-	// Pedir el nombre del jugador
 	playerName := askPlayerName()
-
-	// Conectar al servidor WebSocket
 	url := "ws://localhost:8080/"
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
@@ -162,25 +156,22 @@ func runClient() {
 	}
 	defer conn.Close()
 
-	// Enviar el nombre del jugador al servidor
 	msg := Message{
 		Type:       "join",
 		PlayerName: playerName,
 	}
 	conn.WriteJSON(msg)
 
-	// Inicializar el juego
 	game := &Game{
 		state:      "waiting_room",
 		conn:       conn,
-		playerName: playerName, // Asigna el nombre del jugador
+		playerName: playerName,
 	}
 	go listenToServer(conn, game)
-
-	// Ejecutar el juego
 	ebiten.RunGame(game)
 }
 
+// handleInput procesa entradas del usuario para interactuar con el servidor.
 func handleInput(conn *websocket.Conn, game *Game) {
 	for {
 		var input string
@@ -195,6 +186,7 @@ func handleInput(conn *websocket.Conn, game *Game) {
 	}
 }
 
+// drawGrid dibuja la cuadrícula del tablero en la pantalla.
 func drawGrid(screen *ebiten.Image) {
 	for x := 0; x < boardWidth; x++ {
 		for y := 0; y < boardHeight; y++ {
